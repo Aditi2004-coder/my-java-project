@@ -1,0 +1,139 @@
+import java.sql.*;
+import java.util.Scanner;
+
+public class BankJDBC {
+    public static void main(String[] args) {
+        String url = "jdbc:mysql://localhost:3306/bankdb";
+        String user = "root";        // your MySQL username
+        String password = "root";    // your MySQL password
+
+        Scanner sc = new Scanner(System.in);
+
+        try {
+            Class.forName("com.mysql.cj.jdbc.Driver");
+            Connection con = DriverManager.getConnection(url, user, password);
+            System.out.println(" Connected to MySQL Database!");
+
+            int choice;
+            do {
+            
+                System.out.println("\n======= BANK MENU =======");
+                System.out.println("1. Create New Account");
+                System.out.println("2. View My Account");
+                System.out.println("3. Credit (Deposit Money)");
+                System.out.println("4. Debit (Withdraw Money)");
+                System.out.println("5. Delete My Account");
+                System.out.println("6. Exit");
+                System.out.print("Enter your choice: ");
+                choice = sc.nextInt();
+
+                switch (choice) {
+                    // 1️ Create new account
+                    case 1 :{
+                        System.out.print("Enter Account Number: ");
+                        int accNo = sc.nextInt();
+                        sc.nextLine();
+                        System.out.print("Enter Account Holder Name: ");
+                        String name = sc.nextLine();
+                        System.out.print("Enter Initial Balance: ");
+                        double balance = sc.nextDouble();
+
+                        String insert = "INSERT INTO bank (account_number, account_holder, account_balance) VALUES (?, ?, ?)";
+                        PreparedStatement ps = con.prepareStatement(insert);
+                        ps.setInt(1, accNo);
+                        ps.setString(2, name);
+                        ps.setDouble(3, balance);
+                        ps.executeUpdate();
+                        System.out.println(" Account created successfully!");
+                    }
+
+                    // 2️ View own account details
+                    case 2 :{
+                        System.out.print("Enter your Account Number: ");
+                        int accNo = sc.nextInt();
+
+                        String query = "SELECT * FROM bank WHERE account_number = ?";
+                        PreparedStatement ps = con.prepareStatement(query);
+                        ps.setInt(1, accNo);
+                        ResultSet rs = ps.executeQuery();
+
+                        System.out.println("\nAccount_Number | Account_Holder | Account_Balance");
+                        System.out.println("--------------------------------------------------");
+                        if (rs.next()) {
+                            System.out.println(rs.getInt("account_number") + " | " +
+                                               rs.getString("account_holder") + " | " +
+                                               rs.getDouble("account_balance"));
+                        } else {
+                            System.out.println("Account not found!");
+                        }
+                    }
+
+                    // 3️ Credit (Deposit)
+                    case 3 : {
+                        System.out.print("Enter your Account Number: ");
+                        int accNo = sc.nextInt();
+                        System.out.print("Enter Amount to Deposit: ");
+                        double amount = sc.nextDouble();
+
+                        String update = "UPDATE bank SET account_balance = account_balance + ? WHERE account_number = ?";
+                        PreparedStatement ps = con.prepareStatement(update);
+                        ps.setDouble(1, amount);
+                        ps.setInt(2, accNo);
+                        int rows = ps.executeUpdate();
+                        System.out.println(rows > 0 ? " Amount credited!" : " Account not found!");
+                    }
+
+                    // 4️ Debit (Withdraw)
+                    case 4 : {
+                        System.out.print("Enter your Account Number: ");
+                        int accNo = sc.nextInt();
+                        System.out.print("Enter Amount to Withdraw: ");
+                        double amount = sc.nextDouble();
+
+                        String checkBalance = "SELECT account_balance FROM bank WHERE account_number = ?";
+                        PreparedStatement check = con.prepareStatement(checkBalance);
+                        check.setInt(1, accNo);
+                        ResultSet rs = check.executeQuery();
+
+                        if (rs.next()) {
+                            double balance = rs.getDouble("account_balance");
+                            if (balance >= amount) {
+                                String debit = "UPDATE bank SET account_balance = account_balance - ? WHERE account_number = ?";
+                                PreparedStatement ps = con.prepareStatement(debit);
+                                ps.setDouble(1, amount);
+                                ps.setInt(2, accNo);
+                                ps.executeUpdate();
+                                System.out.println(" Amount debited successfully!");
+                            } else {
+                                System.out.println("Insufficient balance!");
+                            }
+                        } else {
+                            System.out.println(" Account not found!");
+                            
+                        }
+                    }
+
+                    // 5️ Delete account
+                    case 5 : {
+                        System.out.print("Enter your Account Number: ");
+                        int accNo = sc.nextInt();
+
+                        String delete = "DELETE FROM bank WHERE account_number = ?";
+                        PreparedStatement ps = con.prepareStatement(delete);
+                        ps.setInt(1, accNo);
+                        int rows = ps.executeUpdate();
+                        System.out.println(rows > 0 ? "Account deleted!" : " Account not found!");
+                    }
+
+                    case 6 : System.out.println(" Exiting... Goodbye!");
+                    default : System.out.println("Invalid choice! Try again.");
+                }
+            } while (choice != 6);
+
+            con.close();
+            sc.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}
